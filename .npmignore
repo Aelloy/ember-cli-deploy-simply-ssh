@@ -1,0 +1,4 @@
+.editorconfig
+.travis.yml
+.npmignore
+**/.gitkeep

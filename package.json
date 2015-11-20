@@ -1,0 +1,42 @@
+{
+  "name": "ember-cli-deploy-simply-ssh",
+  "version": "0.0.1",
+  "description": "Deploy your Ember index.html and assets via ssh.",
+  "scripts": {
+    "start": "ember server",
+    "build": "ember build",
+    "test": "node tests/runner.js"
+  },
+  "repository": "https://github.com/AutoCloud/ember-cli-deploy-simply-ssh",
+  "engines": {
+    "node": ">= 4.0.0"
+  },
+  "author": "Ivan Youroff",
+  "license": "MIT",
+  "devDependencies": {
+    "broccoli-asset-rev": "^2.2.0",
+    "ember-cli": "1.13.12",
+    "ember-cli-babel": "^5.1.5",
+    "ember-cli-app-version": "0.3.3",
+    "ember-cli-content-security-policy": "0.4.0",
+    "ember-cli-dependency-checker": "0.0.8",
+    "ember-cli-ic-ajax": "0.1.1",
+    "ember-cli-inject-live-reload": "^1.3.0",
+    "ember-cli-qunit": "0.3.10",
+    "ember-cli-uglify": "1.0.1",
+    "ember-export-application-global": "^1.0.4",
+    "glob": "^5.0.3"
+  },
+  "keywords": [
+    "ember-addon",
+    "ember-cli-deploy-plugin"
+  ],
+  "dependencies": {
+    "ember-cli-deploy-plugin": "0.2.0",
+    "core-object": "^1.1.0",
+    "node-ssh": "2.0.7"
+  },
+  "ember-addon": {
+     "after": "ember-cli-deploy-revision-data"
+  }
+}
