@@ -25,7 +25,6 @@ module.exports = {
       },
 
       setup: function(context) {
-        console.log(this.readConfig('fullDistDir'));
         this.conn = new SSH({
             host:       this.readConfig('host'),
             port:       this.readConfig('port'),
