@@ -2,6 +2,8 @@
 
 **Install**
 
+!!!For some reason it opens a new session for every file uploaded (implementation of ssh2 or node-ssh), so it requires `MaxSessions XXX` in sshd config where XXX is something big.
+
 ```
 $ ember install ember-cli-deploy
 $ ember install ember-cli-build
