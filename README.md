@@ -1,8 +1,9 @@
 # ember-cli-deploy-simply-ssh #
 
-**Install**
+This plugin implements the most basic deploy strategy — deploying using ssh/sftp
+onto remote server.   
 
-!!!For some reason it opens a new session for every file uploaded (implementation of ssh2 or node-ssh), so it requires `MaxSessions XXX` in sshd config where XXX is something big.
+##Installation##
 
 ```
 $ ember install ember-cli-deploy
@@ -12,6 +13,10 @@ $ ember install ember-cli-deploy-gzip
 $ ember install ember-cli-deploy-simply-ssh
 ```
 
+Where `ember-cli-revision-data` and `ember-cli-deploy-gzip` are optional.
+
+##Setup##
+
 Sample `deploy.js`:
 
 ```js
@@ -19,16 +24,20 @@ module.exports = function(deployTarget) {
   var ENV = {};
 
   if (deployTarget === 'production') {
-    ENV.build = {
+    ENV['build'] = {
       environment: 'production'
     }
-    
-    ENV.ssh = {
-      host: process.env.SSH_HOST,
-      dir: process.env.SSH_DIR,
-      port: process.env.SSH_PORT,
-      user: process.env.SSH_USER,
-      key: process.env.SSH_KEY
+
+    ENV['simply-ssh'] = {
+      connection: {
+        // parameter hash accepted by SSH2, see https://github.com/mscdex/ssh2 for details
+        host: process.env.SSH_HOST,
+        port: process.env.SSH_PORT,
+        username: process.env.SSH_USER,
+        privateKey: process.env.SSH_KEY
+      },
+      dir: '/var/www/app',
+      keep: 5
     }
   }
 
@@ -40,19 +49,50 @@ module.exports = function(deployTarget) {
 Sample `.env.deploy.production`:
 ```
 SSH_HOST=yourhost.com
-SSH_DIR=/var/www/appdir
 SSH_PORT=22
 SSH_USER=deploy
 SSH_KEY=/home/user/.ssh/id_rsa
 ```
 * Also possible to use password and passphrase as params.
 
-## Directory Structure ##
+It makes sense to add `.env.deploy.*` to your `.gitignore` file.
 
-Application releases live in `releases` dir:
+## Usage ##
+
+### With `ember-cli-revision-data`
+
+Application releases are placed in `(dir)/releases` folder using revision key:
 ```
-/var/www/appdir/releases/35h23jh23j52k3jg5k32jh5
-/var/www/appdir/releases/2lkjs9d93ukhf3798oasjf7
+/var/www/app/releases/35h23jh23j52k3jg5k32jh5
+/var/www/app/releases/2lkjs9d93ukhf3798oasjf7
 ```
-Current release linked to `/var/www/appdir/current`
-index.html and assets copied together to be served by Nginx.
+
+To become active, the revision must be activated, which creates a symbolic link
+`/var/www/app/current` linked to the active revision.
+
+You can choose to activate the release right after deployment:
+`ember deploy production --activate`
+
+...or activate it afterwards:
+```
+ember deploy production
+ember deploy:activate production --revision 35h23jh23j52k3jg5k32jh5
+```
+
+To list available releases, use: `ember deploy:list production`
+```
+- =================================
+- > 2017/08/26 13:52:53 | 35h23jh23j52k3jg5k32jh5
+-   2017/09/08 16:43:16 | 2lkjs9d93ukhf3798oasjf7
+```
+
+Option `keep` defines how many of the most recent revisions will be kept on server.
+Active release cannot be deleted, which makes it outstanding. For example, if
+you have `keep == 3` and your active release is older than 3 most recent releases,
+then total number of available releases will be 4.
+
+### Without `ember-cli-revision-data`
+
+Without revision data plugin all files are placed into `dir` folder as is,
+in which case you don't need to activate the release, and you won't have
+the list of available releases.

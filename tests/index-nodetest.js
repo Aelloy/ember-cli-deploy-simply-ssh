@@ -32,28 +32,4 @@ describe('my new plugin', function() {
 
     assert.equal(result.name, 'test-plugin');
   });
-
-  describe('hook',function() {
-    var plugin;
-    var context;
-
-    it('calls the hook', function() {
-      plugin = subject.createDeployPlugin({name:'my plugin' });
-      context = {
-        ui: mockUi,
-        project: stubProject,
-        config: { "my-plugin": {
-            pluginClient: function(context) {
-              return {
-                upload: function(context) {
-                  return Promise.resolve();
-                }
-              };
-            }
-          }
-        }
-      };
-      return assert.isFulfilled(plugin.upload(context))
-    });
-  });
 });
