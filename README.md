@@ -7,13 +7,13 @@ onto remote server.
 
 ```
 $ ember install ember-cli-deploy
-$ ember install ember-cli-build
-$ ember install ember-cli-revision-data
+$ ember install ember-cli-deploy-build
+$ ember install ember-cli-deploy-revision-data
 $ ember install ember-cli-deploy-gzip
 $ ember install ember-cli-deploy-simply-ssh
 ```
 
-Where `ember-cli-revision-data` and `ember-cli-deploy-gzip` are optional.
+Where `ember-cli-deploy-revision-data` and `ember-cli-deploy-gzip` are optional.
 
 ## Setup ##
 
