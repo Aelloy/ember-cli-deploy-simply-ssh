@@ -3,7 +3,7 @@
 This plugin implements the most basic deploy strategy — deploying using ssh/sftp
 onto remote server.   
 
-##Installation##
+## Installation ##
 
 ```
 $ ember install ember-cli-deploy
@@ -15,7 +15,7 @@ $ ember install ember-cli-deploy-simply-ssh
 
 Where `ember-cli-revision-data` and `ember-cli-deploy-gzip` are optional.
 
-##Setup##
+## Setup ##
 
 Sample `deploy.js`:
 
@@ -59,7 +59,7 @@ It makes sense to add `.env.deploy.*` to your `.gitignore` file.
 
 ## Usage ##
 
-### With `ember-cli-revision-data`
+### With `ember-cli-revision-data` ###
 
 Application releases are placed in `(dir)/releases` folder using revision key:
 ```
@@ -91,8 +91,17 @@ Active release cannot be deleted, which makes it outstanding. For example, if
 you have `keep == 3` and your active release is older than 3 most recent releases,
 then total number of available releases will be 4.
 
-### Without `ember-cli-revision-data`
+### Without `ember-cli-revision-data` ###
 
 Without revision data plugin all files are placed into `dir` folder as is,
 in which case you don't need to activate the release, and you won't have
 the list of available releases.
+
+### GZipping ###
+
+Whether you use `ember-cli-deploy-gzip` or not, this plugin will copy appropriate
+files into the defined directory.
+
+* PS: If you use it on windows machine or with windows driven web-server, please
+provide a feedback if you have any issues. To support these combinations, we might
+need some extra options.
