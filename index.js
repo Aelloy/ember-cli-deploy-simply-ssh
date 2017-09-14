@@ -1,150 +1,180 @@
 /* jshint node: true */
 'use strict';
-
-var RSVP = require('rsvp');
-var BasePlugin = require('ember-cli-deploy-plugin');
-var node_ssh = require('node-ssh');
-var path = require('path');
+const RSVP = require('rsvp');
+const BasePlugin = require('ember-cli-deploy-plugin');
+const node_ssh = require('node-ssh');
+const path = require('path');
 
 module.exports = {
   name: 'ember-cli-deploy-simply-ssh',
 
-  createDeployPlugin: function(options) {
-    var DeployPlugin = BasePlugin.extend({
+  createDeployPlugin(options) {
+    const DeployPlugin = BasePlugin.extend({
       name: options.name,
 
-      after: ["ember-cli-deploy-revision-data"],
       defaultConfig: {
         dir: '/var/www',
         keep: 2
       },
 
-      setup: function() {
-        var ssh = new node_ssh();
-        return ssh.connect(this.readConfig('connection')).then(function(conn) {
+      setup() {
+        const ssh = this.readConfig('sshClient') || new node_ssh;
+        return ssh.connect(this.readConfig('connection')).then((conn) => {
           this.log("SSH connection established.", {color: "green"});
           return {ssh: conn};
-        }.bind(this));
+        });
       },
 
-      fetchRevisions: function(context) {
-        return this._findRevisionsWithActive(context).then(function(revisions){
+      fetchRevisions(context) {
+        return this._fetchRevisionsJson(context).then((revisions) => {
           return {revisions: revisions};
         });
       },
 
-      willUpload: function(context) {
-        var dir = this.readConfig('dir');
-        if (context.revisionData) {
-          dir = path.join(dir, 'releases', context.revisionData.revisionKey);
+      willUpload(context) {
+        let dir = this.readConfig('dir');
+        if (context.revisionData && context.revisionData.revisionKey) {
+          dir = path.posix.join(dir, 'releases', context.revisionData.revisionKey);
         };
         this.log("Creating directory " + dir, {color: "green"});
-        return this._execCommand(context, 'mkdir -p ' + dir).then(function(){
+        return this._execCommand(context, 'mkdir -p ' + dir).then(() => {
           return {releaseDir: dir};
         });
       },
 
-      upload: function(context) {
-        this.log("Uploading files.", {color: "green"});
+      upload(context) {
+        this.log("Uploading files:", {color: "green"});
         var files = context.gzippedFiles || context.distFiles;
-        var plugin = this;
         var distDir = path.join(process.cwd(), context.distDir);
-        return files.reduce(function(p, file) {
-          return p.then(function(s){
+        return files.reduce((promise, file) => {
+          return promise.then(() => {
             var local = path.join(distDir, file);
-            var remote = path.join(context.releaseDir, file);
-            return context.ssh.putFile(local, remote).then(function(){
-              plugin.log(file);
+            var remote = path.posix.join(context.releaseDir, file);
+            return context.ssh.putFile(local, remote).then(() => {
+              this.log(file);
             });
           });
-        }, RSVP.Promise.resolve());
-      },
-
-      didUpload: function(context) {
-        var that = this;
-        this.log("Checking old releases to purge...", {color: 'green'});
-        return this._findRevisionsWithActive(context).then(function(revisions){
-          var keep = that.readConfig('keep');
-          revisions.splice(-keep, keep);
-          var toDelete = revisions.filter(function(rev) {
-            return !rev.active;
-          }).map(function(rev) {
-            return path.join(that.readConfig('dir'), 'releases', rev.revision);
-          });
-          if (toDelete.length > 0) {
-            return that._execCommand(context, "rm -rf " + toDelete.join(" ")).then(function(){
-              that.log("Purging revisions:", {color: 'green'});
-              toDelete.forEach(function(rev){
-                that.log(rev);
-              });
-            });
+        }, RSVP.Promise.resolve()).then(() => {
+          if (context.revisionData && context.revisionData.revisionKey) {
+            return {
+              uploadedRevision: {
+                revision: context.revisionData.revisionKey,
+                timestamp: Date.now(),
+                active: false
+              }
+            }
           };
         });
       },
 
-      activate: function(context) {
-        var revision = context.commandOptions.revision;
-        var source = path.join(this.readConfig('dir'), 'releases', revision);
-        var target = path.join(this.readConfig('dir'), 'current');
-        this._execCommand(context, "ln -sfn " + source + " " + target).then(function(){
-          this.log("Revision " + revision + " is now active!", {color: 'green'})
-        }.bind(this));
+      didUpload(context) {
+        if (context.uploadedRevision) {
+          return this._fetchRevisionsJson(context).then((revisions) => {
+            revisions = this._mergeRevision(revisions, context.uploadedRevision);
+            let del, keep;
+            [del, keep] = this._splitRevisions(revisions, this.readConfig('keep'));
+            let promises = [];
+            if (del.length > 0) { promises.push(this._deleteRevisions(context, del)) };
+            if (keep.length > 0) { promises.push(this._saveRevisions(context, keep)) };
+            return RSVP.all(promises);
+          })
+        }
       },
 
-      teardown: function(context) {
+      activate(context) {
+        if (context.commandOptions.revision || context.uploadedRevision) {
+          const revision = context.commandOptions.revision || context.revisionData.revisionKey;
+          const source = path.posix.join(this.readConfig('dir'), 'releases', revision);
+          const target = path.posix.join(this.readConfig('dir'), 'current');
+          const cmd = "test -e " + source
+            + " && ln -sfn " + source + " " + target
+            + " || >&2 echo \"Revision is missing!\"";
+          return this._execCommand(context, cmd).then(() => {
+            this.log("Revision " + revision + " is now active!", {color: 'green'});
+            return {activatedRevision: revision};
+          });
+        };
+      },
+
+      didActivate(context) {
+        if (context.activatedRevision) {
+          const revisions = context.revisions.map((r) => {
+            r.active = r.revision == context.activatedRevision;
+            return r;
+          });
+          return this._saveRevisions(context, revisions);
+        };
+      },
+
+      teardown(context) {
         context.ssh.dispose();
         this.log("SSH connection closed", {color: 'green'});
       },
 
-      _execCommand: function(context, command){
-        return new RSVP.Promise(function(resolve, reject) {
-          context.ssh.execCommand(command, {stream: 'both'}).then(function(result) {
+      _execCommand(context, command){
+        return new RSVP.Promise((resolve, reject) => {
+          context.ssh.execCommand(command, {stream: 'both'}).then((result) => {
             if (result.stderr) {
               reject(result.stderr);
             };
             resolve(result.stdout);
-          }, function(error) {
-            reject(error);
           });
         });
       },
 
-      _findRevisionsWithActive: function(context) {
-        return RSVP.hash({
-          revisions: this._findRevisions(context),
-          active: this._findActiveRevision(context)
-        }).then(function(result){
-          return result.revisions.map(function(r){
-            r.active = r.revision == result.active;
-            return r;
-          });
+      _fetchRevisionsJson(context) {
+        const revPath = path.posix.join(this.readConfig('dir'), 'releases', 'revisions.json');
+        return this._execCommand(context, "cat " + revPath).then((revisions) => {
+          try {
+            return this._normalizeRevisions(JSON.parse(revisions));
+          } catch (e) {
+            this.log(e, {color: 'red'});
+            return [];
+          };
         });
       },
 
-      _findRevisions: function(context) {
-        var releasesDir = path.join(this.readConfig('dir'), 'releases');
-        return context.ssh.requestSFTP().then(function(sftp){
-          return new RSVP.Promise(function(resolve, reject){
-            sftp.readdir(releasesDir, function(err, list) {
-              if (err) reject(err);
-              var rs = list.map(function(l) {
-                return {revision: l.filename, timestamp: l.attrs.mtime * 1000};
-              }).sort(function(a,b) { a.timestamp - b.timestamp });
-              resolve(rs);
-            });
-          });
+      _normalizeRevisions(revisions) {
+        return revisions.filter((r) => !!r.revision).sort((a,b) => a.timestamp - b.timestamp)
+      },
+
+      _mergeRevision(revisions, revision) {
+        revisions = revisions.filter((r) => r.revision != revision.revision);
+        revisions.push(revision);
+        return revisions;
+      },
+
+      _splitRevisions(revisions, splitPoint) {
+        const offset = revisions.length - splitPoint;
+        let keep = [], del = [];
+        revisions.forEach((r, i) => {
+          if (i >= offset || r.active) {
+            keep.push(r);
+          } else {
+            del.push(r);
+          }
+        });
+        return [del, keep];
+      },
+
+      _deleteRevisions(context, revisions) {
+        const deleting = revisions.map((r) => {
+          return path.posix.join(this.readConfig('dir'), 'releases', r.revision);
+        });
+        return this._execCommand(context, "rm -rf " + deleting.join(" ")).then(() => {
+          this.log("Purging revisions:", {color: 'green'});
+          deleting.forEach((rev) => this.log(rev));
         });
       },
 
-      _findActiveRevision: function(context) {
-        var dir = path.join(this.readConfig('dir'), 'current');
-        return this._execCommand(context, "readlink " + dir).then(function(file){
-          return path.basename(file);
+      _saveRevisions(context, revisions) {
+        const revisionPath = path.posix.join(this.readConfig('dir'), 'releases', 'revisions.json');
+        const cmd = "echo '" + JSON.stringify(revisions) + "'  > " + revisionPath;
+        return this._execCommand(context, cmd).then(() => {
+          this.log("revisions.json updated", {color: 'green'});
         });
       }
-
     });
-
 
     return new DeployPlugin();
   }
