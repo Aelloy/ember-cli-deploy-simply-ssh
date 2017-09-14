@@ -1,6 +1,7 @@
 let chai = require('chai');
 let chaiAsPromised = require("chai-as-promised");
 let SshStub = require("./ssh-stub.js");
+let RSVP = require("rsvp");
 chai.use(chaiAsPromised);
 
 var assert = chai.assert;
@@ -65,8 +66,22 @@ describe('simply-ssh', () => {
   });
 
   describe('fetchRevisions hook:', () => {
-    it('assigns revisions if revisions.json found on server', () => {
-
+    it('retrieves revisions.json with normalization', () => {
+      revisions = [
+        {revision: "1", timestamp: Date.now() - 50000},
+        {revision: "2", timestamp: Date.now() - 100000},
+        {revision: "3", timestamp: Date.now()},
+        {trash: "LOL"} // Just to check we wouldn't consider corrupt data
+      ]
+      plugin.beforeHook(context);
+      plugin.configure(context);
+      context.ssh.commandResponse({stdout: JSON.stringify(revisions)});
+      return assert.isFulfilled(plugin.fetchRevisions(context)).then((res) => {
+        assert.equal(res.revisions.length, 3);
+        assert.equal(res.revisions[0].revision, "2");
+        assert.equal(res.revisions[1].revision, "1");
+        assert.equal(res.revisions[2].revision, "3");
+      });
     });
   });
 
@@ -131,6 +146,38 @@ describe('simply-ssh', () => {
     });
   });
 
+  describe('didUpload hook:', () => {
+    beforeEach(() => {
+      context.uploadedRevision = {revision: "4", timestamp: Date.now(), active: false};
+      revisions = [
+        {revision: "1", timestamp: Date.now() - 50000, active: true},
+        {revision: "2", timestamp: Date.now() - 100000, active: false},
+        {revision: "3", timestamp: Date.now() - 1000, active: false},
+      ];
+      plugin._fetchRevisionsJson = (context) => { return RSVP.resolve(revisions) };
+      plugin.beforeHook(context);
+      plugin.configure(context);
+    });
+
+    it('cleans up old revisions if above `keep`', () => {
+      return assert.isFulfilled(plugin.didUpload(context)).then(() => {
+        const deletedDir = new RegExp('/var/www/releases/2');
+        const updatedRevs = revisions.filter((r) => r.revision == 2)
+          .push(context.uploadedRevision);
+        const mask = new RegExp(JSON.stringify(updatedRevs));
+        assert.ok(mockUi.received(/Purging revisions/));
+        assert.ok(mockUi.received(deletedDir));
+        assert.ok(mockUi.received(/revisions\.json updated/));
+        assert.ok(context.ssh.commands.some((c) => {
+          return deletedDir.test(c) && /rm -rf/.test(c);
+        }));
+        assert.ok(context.ssh.commands.some((c) => {
+          return mask.test(c);
+        }));
+      });
+    });
+  });
+
   describe('activate hook:', () => {
     beforeEach(() => {
       context.releaseDir = '/var/www/release';
@@ -142,8 +189,18 @@ describe('simply-ssh', () => {
     });
 
     it('creates symbolic link to selected release', () => {
-      return assert.isFulfilled(plugin.activate(context)).then(() => {
+      return assert.isFulfilled(plugin.activate(context)).then((res) => {
         assert.ok(mockUi.received(/Revision 12345 is now active!/));
+        assert.equal(res.activatedRevision, "12345");
+      });
+    });
+
+    it('does nothing if revisions are not supported', () => {
+      delete context.commandOptions.revision;
+      plugin.beforeHook(context);
+      return assert.isFulfilled(plugin.activate(context)).then((res) => {
+        assert.notOk(mockUi.received(/is now active!/));
+        assert.notOk(res);
       });
     });
 
@@ -151,6 +208,32 @@ describe('simply-ssh', () => {
       context.ssh.commandResponse({stderr: "Revision is missing!"});
       return assert.isRejected(plugin.activate(context)).then((e) => {
         assert.equal(e, "Revision is missing!");
+      });
+    });
+  });
+
+  describe('didActivate hook:', () => {
+    it('does nothing if activatedRevision is undefined', () => {
+      plugin.beforeHook(context);
+      plugin.configure(context);
+      return assert.isFulfilled(plugin.didActivate(context)).then((res) => {
+        assert.notOk(res);
+      });
+    });
+
+    it('updated revisions.json after activate', () => {
+      context.activatedRevision = "12345";
+      let oldRev = {revision: "LOL", timestamp: Date.now() - 50000, active: true};
+      let newRev = {revision: "12345", timestamp: Date.now(), active: false};
+      context.revisions = [oldRev, newRev];
+      plugin.beforeHook(context);
+      plugin.configure(context);
+      return assert.isFulfilled(plugin.didActivate(context)).then((res) => {
+        assert.notOk(res);
+        oldRev.active = false;
+        newRev.active = true;
+        const mask = new RegExp(JSON.stringify([oldRev, newRev]));
+        assert.ok(mask.test(context.ssh.commands[0]));
       });
     });
   });

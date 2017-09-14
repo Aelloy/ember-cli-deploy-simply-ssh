@@ -44,12 +44,12 @@ module.exports = {
 
       upload(context) {
         this.log("Uploading files:", {color: "green"});
-        var files = context.gzippedFiles || context.distFiles;
-        var distDir = path.join(process.cwd(), context.distDir);
+        const files = context.gzippedFiles || context.distFiles;
+        const distDir = path.join(process.cwd(), context.distDir);
         return files.reduce((promise, file) => {
           return promise.then(() => {
-            var local = path.join(distDir, file);
-            var remote = path.posix.join(context.releaseDir, file);
+            const local = path.join(distDir, file);
+            const remote = path.posix.join(context.releaseDir, file);
             return context.ssh.putFile(local, remote).then(() => {
               this.log(file);
             });
@@ -68,42 +68,43 @@ module.exports = {
       },
 
       didUpload(context) {
-        if (context.uploadedRevision) {
-          return this._fetchRevisionsJson(context).then((revisions) => {
-            revisions = this._mergeRevision(revisions, context.uploadedRevision);
-            let del, keep;
-            [del, keep] = this._splitRevisions(revisions, this.readConfig('keep'));
-            let promises = [];
-            if (del.length > 0) { promises.push(this._deleteRevisions(context, del)) };
-            if (keep.length > 0) { promises.push(this._saveRevisions(context, keep)) };
-            return RSVP.all(promises);
-          })
-        }
+        if (!context.uploadedRevision) { return RSVP.resolve() };
+        return this._fetchRevisionsJson(context).then((revisions) => {
+          revisions = this._mergeRevision(revisions, context.uploadedRevision);
+          let del, keep;
+          [del, keep] = this._splitRevisions(revisions, this.readConfig('keep'));
+          let promises = [];
+          if (del.length > 0) { promises.push(this._deleteRevisions(context, del)) };
+          if (keep.length > 0) { promises.push(this._saveRevisions(context, keep)) };
+          return RSVP.all(promises);
+        });
       },
 
       activate(context) {
-        if (context.commandOptions.revision || context.uploadedRevision) {
-          const revision = context.commandOptions.revision || context.revisionData.revisionKey;
-          const source = path.posix.join(this.readConfig('dir'), 'releases', revision);
-          const target = path.posix.join(this.readConfig('dir'), 'current');
-          const cmd = "test -e " + source
-            + " && ln -sfn " + source + " " + target
-            + " || >&2 echo \"Revision is missing!\"";
-          return this._execCommand(context, cmd).then(() => {
-            this.log("Revision " + revision + " is now active!", {color: 'green'});
-            return {activatedRevision: revision};
-          });
+        if (!(context.commandOptions.revision || context.uploadedRevision)) {
+          return RSVP.resolve();
         };
+        const revision = context.commandOptions.revision || context.revisionData.revisionKey;
+        const source = path.posix.join(this.readConfig('dir'), 'releases', revision);
+        const target = path.posix.join(this.readConfig('dir'), 'current');
+        const cmd = "test -e " + source
+          + " && ln -sfn " + source + " " + target
+          + " || >&2 echo \"Revision is missing!\"";
+        return this._execCommand(context, cmd).then(() => {
+          this.log("Revision " + revision + " is now active!", {color: 'green'});
+          return {activatedRevision: revision};
+        });
       },
 
       didActivate(context) {
-        if (context.activatedRevision) {
-          const revisions = context.revisions.map((r) => {
-            r.active = r.revision == context.activatedRevision;
-            return r;
-          });
-          return this._saveRevisions(context, revisions);
+        if (!context.activatedRevision) {
+          return RSVP.resolve();
         };
+        const revisions = context.revisions.map((r) => {
+          r.active = r.revision == context.activatedRevision;
+          return r;
+        });
+        return this._saveRevisions(context, revisions);
       },
 
       teardown(context) {

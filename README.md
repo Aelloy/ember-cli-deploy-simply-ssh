@@ -59,13 +59,16 @@ It makes sense to add `.env.deploy.*` to your `.gitignore` file.
 
 ## Usage ##
 
-### With `ember-cli-revision-data` ###
+### With `ember-cli-deploy-revision-data` ###
 
 Application releases are placed into `(dir)/releases` folder using revision keys:
 ```
 /var/www/app/releases/35h23jh23j52k3jg5k32jh5
 /var/www/app/releases/2lkjs9d93ukhf3798oasjf7
 ```
+
+The information about deployed revisions is stored in `/var/www/app/releases/revisions.json`.
+It can become out of sync, in this case you will need to delete unaccounted revisions on the server manually.
 
 To make a revision active, you must activate it; the activation creates a symbolic link
 `/var/www/app/current` pointing to the active revision.
@@ -91,7 +94,7 @@ The active release cannot be deleted so it is excluded from the count. For examp
 you have `keep == 3` and your active release is older than 3 most recent releases,
 then total number of available releases will be 4.
 
-### Without `ember-cli-revision-data` ###
+### Without `ember-cli-deploy-revision-data` ###
 
 Without the revision data plugin, all files are placed into `dir` folder as is;
 in this case you don't need to activate the release, and you won't have
