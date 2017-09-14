@@ -2,9 +2,10 @@
 'use strict';
 
 const chai = require('chai');
-const chaiAsPromised = require("chai-as-promised");
-const SshStub = require("./ssh-stub.js");
-const RSVP = require("rsvp");
+const chaiAsPromised = require('chai-as-promised');
+const SshStub = require('./ssh-stub.js');
+const RSVP = require('rsvp');
+const Plugin = require('../index.js');
 chai.use(chaiAsPromised);
 
 var assert = chai.assert;
@@ -13,7 +14,7 @@ describe('simply-ssh', () => {
   var subject, mockUi, plugin, context, revisions;
 
   beforeEach(() => {
-    subject = require('../index');
+    subject = Plugin;
     mockUi = {
       verbose: true,
       messages: [],
@@ -50,8 +51,8 @@ describe('simply-ssh', () => {
 
   describe('setup hook:', () => {
     it('rejects when connection params missing', () => {
-      delete context.config["simply-ssh"].connection
-      delete context.config["simply-ssh"].sshClient
+      delete context.config["simply-ssh"].connection;
+      delete context.config["simply-ssh"].sshClient;
       plugin.beforeHook(context);
       return assert.isRejected(plugin.setup(context)).then((e) => {
         assert.equal(e.message, "config.host or config.sock must be provided");

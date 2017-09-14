@@ -71,8 +71,9 @@ module.exports = {
         if (!context.uploadedRevision) { return RSVP.resolve() };
         return this._fetchRevisionsJson(context).then((revisions) => {
           revisions = this._mergeRevision(revisions, context.uploadedRevision);
-          let del, keep;
-          [del, keep] = this._splitRevisions(revisions, this.readConfig('keep'));
+          const split = this._splitRevisions(revisions, this.readConfig('keep'));
+          const del = split[0];
+          const keep = split[1];
           let promises = [];
           if (del.length > 0) { promises.push(this._deleteRevisions(context, del)) };
           if (keep.length > 0) { promises.push(this._saveRevisions(context, keep)) };
