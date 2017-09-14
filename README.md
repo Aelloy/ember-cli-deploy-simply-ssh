@@ -1,5 +1,7 @@
 # ember-cli-deploy-simply-ssh #
 
+[![Build Status](https://travis-ci.org/AutoCloud/ember-cli-deploy-simply-ssh.svg?branch=master)](https://travis-ci.org/AutoCloud/ember-cli-deploy-simply-ssh)
+
 This plugin implements the most basic deploy strategy: deploying through ssh/sftp
 onto a remote server.
 
