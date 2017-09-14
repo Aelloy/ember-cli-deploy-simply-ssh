@@ -1,13 +1,16 @@
-let chai = require('chai');
-let chaiAsPromised = require("chai-as-promised");
-let SshStub = require("./ssh-stub.js");
-let RSVP = require("rsvp");
+/* jshint node: true */
+'use strict';
+
+const chai = require('chai');
+const chaiAsPromised = require("chai-as-promised");
+const SshStub = require("./ssh-stub.js");
+const RSVP = require("rsvp");
 chai.use(chaiAsPromised);
 
 var assert = chai.assert;
 
 describe('simply-ssh', () => {
-  var subject, mockUi;
+  var subject, mockUi, plugin, context, revisions;
 
   beforeEach(() => {
     subject = require('../index');
@@ -39,7 +42,6 @@ describe('simply-ssh', () => {
     plugin = subject.createDeployPlugin({
       name: 'simply-ssh'
     });
-
   });
 
   it('has a name', () => {
