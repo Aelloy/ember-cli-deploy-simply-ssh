@@ -1,3 +1,6 @@
+/* jshint node: true */
+'use strict';
+
 let RSVP = require('rsvp');
 
 module.exports = class SshStub {
