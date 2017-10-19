@@ -17,7 +17,7 @@ module.exports = {
         keep: 2
       },
 
-      setup() {
+      willPrepare() {
         const ssh = this.readConfig('sshClient') || new node_ssh;
         return ssh.connect(this.readConfig('connection')).then((conn) => {
           this.log("SSH connection established.", {color: "green"});
