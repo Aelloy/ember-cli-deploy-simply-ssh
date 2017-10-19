@@ -49,19 +49,19 @@ describe('simply-ssh', () => {
     assert.equal(plugin.name, 'simply-ssh');
   });
 
-  describe('setup hook:', () => {
+  describe('willPrepare hook:', () => {
     it('rejects when connection params missing', () => {
       delete context.config["simply-ssh"].connection;
       delete context.config["simply-ssh"].sshClient;
       plugin.beforeHook(context);
-      return assert.isRejected(plugin.setup(context)).then((e) => {
+      return assert.isRejected(plugin.willPrepare(context)).then((e) => {
         assert.equal(e.message, "config.host or config.sock must be provided");
       });
     });
 
     it('connects with valid params', () => {
       plugin.beforeHook(context);
-      return assert.isFulfilled(plugin.setup(context)).then((context) => {
+      return assert.isFulfilled(plugin.willPrepare(context)).then((context) => {
         assert.ok(mockUi.received(/SSH connection established/));
         assert.ok(context.ssh instanceof SshStub);
       });
