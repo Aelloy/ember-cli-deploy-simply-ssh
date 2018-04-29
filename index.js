@@ -44,7 +44,7 @@ module.exports = {
 
       upload(context) {
         this.log("Uploading files:", {color: "green"});
-        const files = context.gzippedFiles || context.distFiles;
+        const files = context.distFiles;
         const distDir = path.join(process.cwd(), context.distDir);
         return files.reduce((promise, file) => {
           return promise.then(() => {
