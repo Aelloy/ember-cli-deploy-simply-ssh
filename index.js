@@ -14,6 +14,8 @@ module.exports = {
 
       defaultConfig: {
         dir: '/var/www',
+        releasesDir: 'releases',
+        targetLink: 'current',
         keep: 2
       },
 
@@ -33,8 +35,9 @@ module.exports = {
 
       willUpload(context) {
         let dir = this.readConfig('dir');
+        let releasesDir = this.readConfig('releasesDir');
         if (context.revisionData && context.revisionData.revisionKey) {
-          dir = path.posix.join(dir, 'releases', context.revisionData.revisionKey);
+          dir = path.posix.join(dir, releasesDir, context.revisionData.revisionKey);
         };
         this.log("Creating directory " + dir, {color: "green"});
         return this._execCommand(context, 'mkdir -p ' + dir).then(() => {
@@ -86,8 +89,8 @@ module.exports = {
           return RSVP.resolve();
         };
         const revision = context.commandOptions.revision || context.revisionData.revisionKey;
-        const source = path.posix.join(this.readConfig('dir'), 'releases', revision);
-        const target = path.posix.join(this.readConfig('dir'), 'current');
+        const source = path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), revision);
+        const target = path.posix.join(this.readConfig('dir'), this.readConfig('targetLink'));
         const cmd = "test -e " + source
           + " && ln -sfn " + source + " " + target
           + " || >&2 echo \"Revision is missing!\"";
@@ -125,7 +128,7 @@ module.exports = {
       },
 
       _fetchRevisionsJson(context) {
-        const revPath = path.posix.join(this.readConfig('dir'), 'releases', 'revisions.json');
+        const revPath = path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), 'revisions.json');
         const cmd = `(test -e ${revPath} || echo "[]" > ${revPath}) && cat ${revPath}`;
         return this._execCommand(context, cmd).then((revisions) => {
           try {
@@ -162,7 +165,7 @@ module.exports = {
 
       _deleteRevisions(context, revisions) {
         const deleting = revisions.map((r) => {
-          return path.posix.join(this.readConfig('dir'), 'releases', r.revision);
+          return path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), r.revision);
         });
         return this._execCommand(context, "rm -rf " + deleting.join(" ")).then(() => {
           this.log("Purging revisions:", {color: 'green'});
@@ -171,7 +174,7 @@ module.exports = {
       },
 
       _saveRevisions(context, revisions) {
-        const revisionPath = path.posix.join(this.readConfig('dir'), 'releases', 'revisions.json');
+        const revisionPath = path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), 'revisions.json');
         const cmd = "echo '" + JSON.stringify(revisions) + "'  > " + revisionPath;
         return this._execCommand(context, cmd).then(() => {
           this.log("revisions.json updated", {color: 'green'});
