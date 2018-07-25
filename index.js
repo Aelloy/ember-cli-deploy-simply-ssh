@@ -15,7 +15,7 @@ module.exports = {
       defaultConfig: {
         dir: '/var/www',
         releasesDir: 'releases',
-        applicationDir: 'public',
+        targetLink: 'current',
         keep: 2
       },
 
@@ -90,7 +90,7 @@ module.exports = {
         };
         const revision = context.commandOptions.revision || context.revisionData.revisionKey;
         const source = path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), revision);
-        const target = path.posix.join(this.readConfig('dir'), this.readConfig('applicationDir'));
+        const target = path.posix.join(this.readConfig('dir'), this.readConfig('targetLink'));
         const cmd = "test -e " + source
           + " && ln -sfn " + source + " " + target
           + " || >&2 echo \"Revision is missing!\"";
