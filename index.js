@@ -129,7 +129,7 @@ module.exports = {
 
       _fetchRevisionsJson(context) {
         const revPath = path.posix.join(this.readConfig('dir'), this.readConfig('releasesDir'), 'revisions.json');
-        const cmd = `(test -e ${revPath} || echo "[]" > ${revPath}) && cat ${revPath}`;
+        const cmd = `(test -e ${revPath} && cat ${revPath}) || echo "[]"`;
         return this._execCommand(context, cmd).then((revisions) => {
           try {
             return this._normalizeRevisions(JSON.parse(revisions));
