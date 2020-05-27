@@ -4,6 +4,7 @@ const RSVP = require('rsvp');
 const BasePlugin = require('ember-cli-deploy-plugin');
 const node_ssh = require('node-ssh');
 const path = require('path');
+const minimatch = require('minimatch');
 
 module.exports = {
   name: 'ember-cli-deploy-simply-ssh',
@@ -16,6 +17,7 @@ module.exports = {
         dir: '/var/www',
         releasesDir: 'releases',
         targetLink: 'current',
+        ignorePattern: null,
         keep: 2
       },
 
@@ -47,7 +49,19 @@ module.exports = {
 
       upload(context) {
         this.log("Uploading files:", {color: "green"});
-        const files = context.distFiles;
+
+        let files = context.distFiles;
+
+        const ignorePattern = this.readConfig('ignorePattern');
+
+        if (ignorePattern != null) {
+          this.log('ignoring `' + ignorePattern + '`', { verbose: true });
+
+          files = files.filter(function(path){
+            return !minimatch(path, ignorePattern, { matchBase: true });
+          });
+        }
+
         const distDir = path.join(process.cwd(), context.distDir);
         return files.reduce((promise, file) => {
           return promise.then(() => {

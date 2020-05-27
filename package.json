@@ -22,6 +22,7 @@
   ],
   "dependencies": {
     "ember-cli-deploy-plugin": "0.2.9",
+    "minimatch": "^3.0.4",
     "node-ssh": "4.2.3",
     "rsvp": "^3.3.3"
   }
