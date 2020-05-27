@@ -5,6 +5,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const SshStub = require('./ssh-stub.js');
 const RSVP = require('rsvp');
+const minimatch = require('minimatch');
 const Plugin = require('../index.js');
 chai.use(chaiAsPromised);
 
@@ -26,7 +27,7 @@ describe('simply-ssh', () => {
     };
     context = {
       distDir: process.cwd() + '/tests/fixtures/dist',
-      distFiles: ['app.css', 'app.js'],
+      distFiles: ['app.css', 'app.js', 'app.map'],
       ui: mockUi,
       ssh: 0,
       config: {
@@ -137,6 +138,16 @@ describe('simply-ssh', () => {
       return assert.isFulfilled(plugin.upload(context)).then((res) => {
         assert.equal(res.uploadedRevision.revision, "COOLREVISION");
         assert.ok(res.uploadedRevision.timestamp - Date.now() < 50);
+      });
+    });
+
+    it('uploads files one-by-one with -ignore-pattern', () => {
+      context.config["simply-ssh"].ignorePattern = "**/*.map";
+      plugin.beforeHook(context);
+      return assert.isFulfilled(plugin.upload(context)).then((res) => {
+        assert.ok(mockUi.received(/Uploading files/));
+        assert.notOk(mockUi.received(minimatch.makeRe("**/*.map", { matchBase: true })));
+        assert.notOk(res);
       });
     });
 
