@@ -1,6 +1,6 @@
 {
   "name": "ember-cli-deploy-simply-ssh",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Deploy your Ember index.html and assets via ssh.",
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha tests/index-nodetest.js"
