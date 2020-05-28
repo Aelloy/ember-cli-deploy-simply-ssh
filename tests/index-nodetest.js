@@ -26,7 +26,7 @@ describe('simply-ssh', () => {
     };
     context = {
       distDir: process.cwd() + '/tests/fixtures/dist',
-      distFiles: ['app.css', 'app.js'],
+      distFiles: ['app.css', 'app.js', 'app.map'],
       ui: mockUi,
       ssh: 0,
       config: {
@@ -137,6 +137,16 @@ describe('simply-ssh', () => {
       return assert.isFulfilled(plugin.upload(context)).then((res) => {
         assert.equal(res.uploadedRevision.revision, "COOLREVISION");
         assert.ok(res.uploadedRevision.timestamp - Date.now() < 50);
+      });
+    });
+
+    it('uploads files one-by-one with -ignore-pattern', () => {
+      context.config["simply-ssh"].ignorePattern = "*.map";
+      plugin.beforeHook(context);
+      return assert.isFulfilled(plugin.upload(context)).then((res) => {
+        assert.ok(mockUi.received(/Uploading files/));
+        assert.notOk(mockUi.received(new RegExp("app.map")));
+        assert.notOk(res);
       });
     });
 
