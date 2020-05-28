@@ -145,7 +145,9 @@ describe('simply-ssh', () => {
       plugin.beforeHook(context);
       return assert.isFulfilled(plugin.upload(context)).then((res) => {
         assert.ok(mockUi.received(/Uploading files/));
-        assert.notOk(mockUi.received(new RegExp("app.map")));
+        assert.ok(mockUi.received(/app\.js/));
+        assert.ok(mockUi.received(/app\.css/));
+        assert.notOk(mockUi.received(/app\.map/));
         assert.notOk(res);
       });
     });
