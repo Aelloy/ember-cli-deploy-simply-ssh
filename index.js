@@ -2,9 +2,10 @@
 'use strict';
 const RSVP = require('rsvp');
 const BasePlugin = require('ember-cli-deploy-plugin');
-const node_ssh = require('node-ssh');
+const {NodeSSH} = require('node-ssh');
 const path = require('path');
 const minimatch = require('minimatch');
+const node_ssh = new NodeSSH();
 
 module.exports = {
   name: 'ember-cli-deploy-simply-ssh',
@@ -22,7 +23,7 @@ module.exports = {
       },
 
       setup() {
-        const ssh = this.readConfig('sshClient') || new node_ssh;
+        const ssh = this.readConfig('sshClient') || node_ssh;
         return ssh.connect(this.readConfig('connection')).then((conn) => {
           this.log("SSH connection established.", {color: "green"});
           return {ssh: conn};
