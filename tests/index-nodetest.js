@@ -55,7 +55,7 @@ describe('simply-ssh', () => {
       delete context.config["simply-ssh"].sshClient;
       plugin.beforeHook(context);
       return assert.isRejected(plugin.setup(context)).then((e) => {
-        assert.equal(e.message, "config.host or config.sock must be provided");
+        assert.equal(e.message, "config must be a valid object");
       });
     });
 
